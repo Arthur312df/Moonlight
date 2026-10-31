@@ -24,7 +24,6 @@ class StarLightCore:
         if self.is_cloud:
             try:
                 from google import genai
-                # Procura a chave no ambiente ou nos Secrets do Streamlit
                 api_key = os.getenv("GEMINI_API_KEY")
                 self.gemini_client = genai.Client(api_key=api_key) if api_key else genai.Client()
                 self.ai_mode = "gemini"
@@ -43,7 +42,7 @@ class StarLightCore:
         self.load_memory()
 
     def load_memory(self):
-        """Carrega o sistema de memória hierárquica (Base Layer, Nível 2, Nível 3)."""
+        """Carrega o sistema de memória hierárquica."""
         if Path(self.memory_file).exists():
             try:
                 with open(self.memory_file, "r", encoding="utf-8") as f:
@@ -62,7 +61,7 @@ class StarLightCore:
             print(f"Erro ao guardar memória: {e}")
 
     def generate_response(self, prompt, system_prompt=""):
-        """Gera uma resposta utilizando o motor de IA ativo (Ollama local ou Gemini na nuvem)."""
+        """Gera uma resposta utilizando o motor de IA ativo."""
         if self.ai_mode == "ollama":
             try:
                 response = self.ollama.chat(
@@ -86,7 +85,6 @@ class StarLightCore:
                 return response.text
             except Exception as e:
                 try:
-                    # Tentativa de fallback para outro modelo Gemini se necessário
                     response = self.gemini_client.models.generate_content(
                         model='gemini-1.5-flash',
                         contents=full_prompt
@@ -96,3 +94,7 @@ class StarLightCore:
                     return f"[Erro Gemini Cloud]: {str(e2)}"
         else:
             return "Modo de IA não configurado corretamente ou dependências em falta."
+
+    def processar_mensagem(self, prompt, system_prompt=""):
+        """Método de compatibilidade exigido pela interface starlight_app.py"""
+        return self.generate_response(prompt, system_prompt)
