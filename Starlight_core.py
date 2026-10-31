@@ -14,53 +14,54 @@ class StarLightCore:
         self.brain_file = brain_file
         self.ai_mode = "fallback"
         self.last_error = "Nenhum motor inicializado."
-        self.gemini_client = None
+        self.mistral_client = None
         
         self._init_ai()
         self.load_memory()
 
     def _get_api_key(self):
-        """Procura a chave nos Secrets do Streamlit ou no .env."""
-        api_key = None
+        """Procura a chave MISTRAL_API_KEY nos Secrets do Streamlit ou no .env."""
         try:
             import streamlit as st
             if hasattr(st, "secrets"):
-                for k in ["GEMINI_API_KEY", "gemini_api_key", "GOOGLE_API_KEY"]:
+                for k in ["MISTRAL_API_KEY", "mistral_api_key"]:
                     if k in st.secrets:
                         return str(st.secrets[k]).strip()
+                # Caso esteja dentro de alguma secção TOML nos Secrets
                 for sec_val in st.secrets.values():
                     if isinstance(sec_val, dict):
                         for k, v in sec_val.items():
-                            if "gemini" in k.lower() or "api_key" in k.lower():
+                            if "mistral" in k.lower() and "key" in k.lower():
                                 return str(v).strip()
         except Exception as e:
             self.last_error = f"Erro ao ler st.secrets: {e}"
 
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        api_key = os.getenv("MISTRAL_API_KEY")
         return api_key.strip() if api_key else None
 
     def _init_ai(self):
-        """Inicializa o Gemini (Nuvem/Key) ou Ollama (Local)."""
+        """Inicializa a API da Mistral (Nuvem/Key) ou o Ollama (Local)."""
         api_key = self._get_api_key()
         is_cloud = "mount/src" in os.getcwd() or os.getenv("STREAMLIT_SHARING_MODE") is not None
 
         if api_key or is_cloud:
             try:
-                from google import genai
+                from mistralai import Mistral
                 if not api_key:
-                    self.last_error = "Chave GEMINI_API_KEY não encontrada nos Secrets do Streamlit."
+                    self.last_error = "Chave MISTRAL_API_KEY não encontrada nos Secrets do Streamlit."
                     return
-                self.gemini_client = genai.Client(api_key=api_key)
-                self.ai_mode = "gemini"
+                self.mistral_client = Mistral(api_key=api_key)
+                self.ai_mode = "mistral_api"
                 self.last_error = ""
                 return
             except ImportError:
-                self.last_error = "A biblioteca 'google-genai' não está instalada no servidor."
+                self.last_error = "A biblioteca 'mistralai' não está instalada. Verifica o requirements.txt."
                 return
             except Exception as e:
-                self.last_error = f"Falha ao iniciar cliente Gemini: {str(e)}"
+                self.last_error = f"Falha ao iniciar cliente Mistral: {str(e)}"
                 return
 
+        # Se estiver a correr localmente sem chave de nuvem, usa o Ollama
         if not is_cloud:
             try:
                 import ollama
@@ -68,7 +69,7 @@ class StarLightCore:
                 self.ai_mode = "ollama"
                 self.last_error = ""
             except ImportError:
-                self.last_error = "Nem Gemini nem Ollama disponíveis."
+                self.last_error = "Nem API da Mistral nem Ollama local estão disponíveis."
 
     def load_memory(self):
         if Path(self.memory_file).exists():
@@ -91,35 +92,33 @@ class StarLightCore:
         if self.ai_mode == "fallback":
             self._init_ai()
 
-        if self.ai_mode == "gemini":
-            full_prompt = f"{system_prompt}\n\nUtilizador: {prompt}" if system_prompt else prompt
-            # Lista de modelos por ordem de prioridade (incluindo o exigido pela API)
-            modelos = ['gemini-3.8-flash', 'gemini-3.0-flash', 'gemini-2.0-flash']
-            ultimo_erro = ""
-            
-            for modelo in modelos:
-                try:
-                    response = self.gemini_client.models.generate_content(
-                        model=modelo,
-                        contents=full_prompt
-                    )
-                    return response.text
-                except Exception as e:
-                    ultimo_erro = str(e)
-                    continue
-                    
-            return f"[Erro na API do Gemini]: {ultimo_erro}"
+        if self.ai_mode == "mistral_api":
+            try:
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+
+                response = self.mistral_client.chat.complete(
+                    model="mistral-small-latest",
+                    messages=messages
+                )
+                return response.choices[0].message.content
+            except Exception as e:
+                return f"[Erro na API da Mistral]: {str(e)}"
         
         elif self.ai_mode == "ollama":
             try:
+                messages = []
+                if system_prompt:
+                    messages.append({"role": "system", "content": system_prompt})
+                messages.append({"role": "user", "content": prompt})
+
                 response = self.ollama.chat(
-                    model='mistral',
-                    messages=[
-                        {'role': 'system', 'content': system_prompt},
-                        {'role': 'user', 'content': prompt}
-                    ]
+                    model="mistral",
+                    messages=messages
                 )
-                return response['message']['content']
+                return response["message"]["content"]
             except Exception as e:
                 return f"[Erro Ollama Local]: {str(e)}"
         else:
