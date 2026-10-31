@@ -19,7 +19,7 @@ class StarLightCore:
             os.getenv("STREAMLIT_SHARING_MODE") is not None
         )
         
-        # Obter a chave de API (lendo do st.secrets na nuvem ou do ambiente localmente)
+        # Obter a chave de API (lendo do st.secrets na nuvem ou do .env localmente)
         api_key = None
         if self.is_cloud:
             try:
@@ -32,23 +32,24 @@ class StarLightCore:
         if not api_key:
             api_key = os.getenv("GEMINI_API_KEY")
 
-        # Inicialização do motor de IA com base na disponibilidade da chave ou ambiente
-        if api_key or self.is_cloud:
+        # Inicialização do motor de IA
+        self.ai_mode = "fallback"
+        if api_key:
             try:
                 from google import genai
-                self.gemini_client = genai.Client(api_key=api_key) if api_key else genai.Client()
+                # Inicialização correta com a chave explícita
+                self.gemini_client = genai.Client(api_key=api_key)
                 self.ai_mode = "gemini"
             except Exception as e:
-                print(f"Erro ao inicializar Gemini na nuvem: {e}")
-                self.ai_mode = "fallback"
-        else:
+                print(f"Erro ao inicializar Gemini: {e}")
+        
+        if self.ai_mode == "fallback" and not self.is_cloud:
             try:
                 import ollama
                 self.ollama = ollama
                 self.ai_mode = "ollama"
             except ImportError:
-                print("Biblioteca 'ollama' não encontrada. A operar em modo de fallback.")
-                self.ai_mode = "fallback"
+                pass
 
         self.load_memory()
 
@@ -73,20 +74,7 @@ class StarLightCore:
 
     def generate_response(self, prompt, system_prompt=""):
         """Gera uma resposta utilizando o motor de IA ativo."""
-        if self.ai_mode == "ollama":
-            try:
-                response = self.ollama.chat(
-                    model='mistral',
-                    messages=[
-                        {'role': 'system', 'content': system_prompt},
-                        {'role': 'user', 'content': prompt}
-                    ]
-                )
-                return response['message']['content']
-            except Exception as e:
-                return f"[Erro Ollama Local]: Certifica-te de que o Ollama está a correr no PC. Detalhe: {str(e)}"
-        
-        elif self.ai_mode == "gemini":
+        if self.ai_mode == "gemini":
             try:
                 full_prompt = f"{system_prompt}\n\nUtilizador: {prompt}" if system_prompt else prompt
                 response = self.gemini_client.models.generate_content(
@@ -103,15 +91,25 @@ class StarLightCore:
                     return response.text
                 except Exception as e2:
                     return f"[Erro Gemini Cloud]: {str(e2)}"
+        
+        elif self.ai_mode == "ollama":
+            try:
+                response = self.ollama.chat(
+                    model='mistral',
+                    messages=[
+                        {'role': 'system', 'content': system_prompt},
+                        {'role': 'user', 'content': prompt}
+                    ]
+                )
+                return response['message']['content']
+            except Exception as e:
+                return f"[Erro Ollama Local]: {str(e)}"
         else:
-            return "Modo de IA não configurado corretamente ou dependências em falta."
+            return "[Erro]: Chave de API do Gemini não detetada. Configura os Secrets no Streamlit Cloud."
 
     def processar_mensagem(self, prompt, system_prompt=""):
         """Método de compatibilidade robusto exigido pela interface starlight_app.py"""
         try:
             return self.generate_response(prompt, system_prompt)
         except Exception as e:
-            if self.is_cloud:
-                return f"[Erro na Nuvem]: Ocorreu um problema ao comunicar com a IA. Detalhe: {str(e)}. Verifica se configuraste a GEMINI_API_KEY nos Secrets do Streamlit."
-            else:
-                return f"[Erro Local]: {str(e)}"
+            return f"[Erro de Execução]: {str(e)}"
