@@ -1,0 +1,177 @@
+{
+    "vocabulario": [
+        "oi",
+        "tudo",
+        "bem",
+        "bom",
+        "dia",
+        "tocar",
+        "musica",
+        "relaxante",
+        "estudar",
+        "abrir",
+        "youtube",
+        "pesquisar",
+        "google",
+        "procurar",
+        "firmeza",
+        "me",
+        "fala",
+        "ai",
+        "qual",
+        "é",
+        "a",
+        "data",
+        "de",
+        "hoje",
+        "starlight",
+        "como",
+        "você",
+        "está",
+        "meu",
+        "lindo",
+        "stop",
+        "exit",
+        "sim"
+    ],
+    "categorias": [
+        {
+            "nome": "Cumprimento Inicial",
+            "resposta": "Oi! Tudo ótimo por aqui! O que vamos construir ou testar agora?",
+            "acao": "nenhuma"
+        },
+        {
+            "nome": "Música para Estudar",
+            "resposta": "Entendido! Abrindo uma música relaxante no YouTube para você...",
+            "acao": "youtube_lofi"
+        },
+        {
+            "nome": "Pesquisa na Web",
+            "resposta": "Deixa comigo! Vou pesquisar isso no Google para você agora.",
+            "acao": "pesquisar_google"
+        },
+        {
+            "nome": "parar",
+            "resposta": "o que você quer parar?",
+            "acao": "nenhuma"
+        },
+        {
+            "nome": "sair",
+            "resposta": "sair",
+            "acao": "nenhuma"
+        },
+        {
+            "nome": "sim",
+            "resposta": "sim",
+            "acao": "nenhuma"
+        }
+    ],
+    "treinamento": [
+        [
+            [
+                "oi",
+                "tudo",
+                "bem"
+            ],
+            0
+        ],
+        [
+            [
+                "oi",
+                "bom",
+                "dia"
+            ],
+            0
+        ],
+        [
+            [
+                "tudo",
+                "bem"
+            ],
+            0
+        ],
+        [
+            [
+                "tocar",
+                "musica",
+                "relaxante"
+            ],
+            1
+        ],
+        [
+            [
+                "musica",
+                "estudar"
+            ],
+            1
+        ],
+        [
+            [
+                "abrir",
+                "youtube",
+                "musica"
+            ],
+            1
+        ],
+        [
+            [
+                "pesquisar",
+                "google"
+            ],
+            2
+        ],
+        [
+            [
+                "procurar",
+                "google"
+            ],
+            2
+        ],
+        [
+            [
+                "firmeza",
+                "me",
+                "fala",
+                "ai",
+                "qual",
+                "é",
+                "a",
+                "data",
+                "de",
+                "hoje",
+                "starlight"
+            ],
+            2
+        ],
+        [
+            [
+                "fala",
+                "starlight",
+                "como",
+                "você",
+                "está",
+                "meu",
+                "lindo"
+            ],
+            0
+        ],
+        [
+            [
+                "stop"
+            ],
+            3
+        ],
+        [
+            [
+                "exit"
+            ],
+            4
+        ],
+        [
+            [
+                "sim"
+            ],
+            5
+        ]
+    ]
+}
