@@ -13,18 +13,29 @@ class StarLightCore:
         self.memory_file = memory_file
         self.brain_file = brain_file
         
-        # Deteta se estamos no Streamlit Cloud ou ambiente de produção na nuvem
+        # Deteta se estamos no Streamlit Cloud
         self.is_cloud = (
             "mount/src" in os.getcwd() or 
-            os.getenv("STREAMLIT_SHARING_MODE") is not None or 
-            os.getenv("GEMINI_API_KEY") is not None
+            os.getenv("STREAMLIT_SHARING_MODE") is not None
         )
         
-        # Inicialização do motor de IA com base no ambiente
+        # Obter a chave de API (lendo do st.secrets na nuvem ou do ambiente localmente)
+        api_key = None
         if self.is_cloud:
             try:
+                import streamlit as st
+                if "GEMINI_API_KEY" in st.secrets:
+                    api_key = st.secrets["GEMINI_API_KEY"]
+            except Exception:
+                pass
+        
+        if not api_key:
+            api_key = os.getenv("GEMINI_API_KEY")
+
+        # Inicialização do motor de IA com base na disponibilidade da chave ou ambiente
+        if api_key or self.is_cloud:
+            try:
                 from google import genai
-                api_key = os.getenv("GEMINI_API_KEY")
                 self.gemini_client = genai.Client(api_key=api_key) if api_key else genai.Client()
                 self.ai_mode = "gemini"
             except Exception as e:
