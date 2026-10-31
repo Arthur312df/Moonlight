@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import urllib.request
 import urllib.error
 from pathlib import Path
@@ -87,32 +88,32 @@ class StarLightCore:
             self._init_ai()
 
         if self.ai_mode == "gemini_api":
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={self.api_key}"
-                headers = {"Content-Type": "application/json"}
-                
-                payload = {
-                    "contents": [{" role": "user", "parts": [{"text": prompt}]}]
-                }
-                # Se houver prompt de sistema da StarLight, envia separado de forma estruturada
-                if system_prompt:
-                    payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
-                
-                # Corrige chave "role" mantendo formato simples compatível com toda a API v1beta
-                payload["contents"] = [{"parts": [{"text": prompt}]}]
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            
+            payload = {
+                "contents": [{"parts": [{"text": prompt}]}]
+            }
+            if system_prompt:
+                payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
 
-                data = json.dumps(payload).encode("utf-8")
-                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
-                
-                with urllib.request.urlopen(req, timeout=30) as response:
-                    res_body = json.loads(response.read().decode("utf-8"))
-                    return res_body["candidates"][0]["content"]["parts"][0]["text"]
-
-            except urllib.error.HTTPError as e:
-                err_msg = e.read().decode("utf-8")
-                return f"[Erro API Gemini ({e.code})]: {err_msg}"
-            except Exception as e:
-                return f"[Erro de Conexão Gemini]: {str(e)}"
+            data = json.dumps(payload).encode("utf-8")
+            
+            # Tenta até 3 vezes caso dê timeout na rede
+            ultimo_erro = ""
+            for tentativa in range(3):
+                try:
+                    req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                    # Timeout estendido para 60 segundos
+                    with urllib.request.urlopen(req, timeout=60) as response:
+                        res_body = json.loads(response.read().decode("utf-8"))
+                        return res_body["candidates"][0]["content"]["parts"][0]["text"]
+                except Exception as e:
+                    ultimo_erro = str(e)
+                    time.sleep(1.5)
+                    continue
+            
+            return f"[Erro de Conexão Gemini após tentativas]: {ultimo_erro}"
 
         elif self.ai_mode == "ollama":
             try:
