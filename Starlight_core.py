@@ -95,6 +95,12 @@ class StarLightCore:
         else:
             return "Modo de IA não configurado corretamente ou dependências em falta."
 
-    def processar_mensagem(self, prompt, system_prompt=""):
-        """Método de compatibilidade exigido pela interface starlight_app.py"""
-        return self.generate_response(prompt, system_prompt)
+   def processar_mensagem(self, prompt, system_prompt=""):
+        """Método de compatibilidade com tratamento de erros visíveis na interface."""
+        try:
+            return self.generate_response(prompt, system_prompt)
+        except Exception as e:
+            if self.is_cloud:
+                return f"[Erro na Nuvem]: Ocorreu um problema ao comunicar com a IA. Detalhe: {str(e)}. Verifica se configuraste a GEMINI_API_KEY nos Secrets do Streamlit."
+            else:
+                return f"[Erro Local]: {str(e)}"
