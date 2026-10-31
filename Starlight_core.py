@@ -28,7 +28,6 @@ class StarLightCore:
                 for k in ["GEMINI_API_KEY", "gemini_api_key", "GOOGLE_API_KEY"]:
                     if k in st.secrets:
                         return str(st.secrets[k]).strip()
-                # Caso esteja dentro de uma secção TOML
                 for sec_val in st.secrets.values():
                     if isinstance(sec_val, dict):
                         for k, v in sec_val.items():
@@ -56,13 +55,12 @@ class StarLightCore:
                 self.last_error = ""
                 return
             except ImportError:
-                self.last_error = "A biblioteca 'google-genai' não está instalada no servidor (verifica se requirements.txt está em minúsculas)."
+                self.last_error = "A biblioteca 'google-genai' não está instalada no servidor."
                 return
             except Exception as e:
                 self.last_error = f"Falha ao iniciar cliente Gemini: {str(e)}"
                 return
 
-        # Se estiver no PC local sem chave Gemini, tenta Ollama
         if not is_cloud:
             try:
                 import ollama
@@ -90,20 +88,27 @@ class StarLightCore:
             print(f"Erro ao guardar memória: {e}")
 
     def generate_response(self, prompt, system_prompt=""):
-        # Se estava em fallback (ex: preso em cache), tenta inicializar novamente
         if self.ai_mode == "fallback":
             self._init_ai()
 
         if self.ai_mode == "gemini":
-            try:
-                full_prompt = f"{system_prompt}\n\nUtilizador: {prompt}" if system_prompt else prompt
-                response = self.gemini_client.models.generate_content(
-                    model='gemini-2.5-flash',
-                    contents=full_prompt
-                )
-                return response.text
-            except Exception as e:
-                return f"[Erro na API do Gemini]: {str(e)}"
+            full_prompt = f"{system_prompt}\n\nUtilizador: {prompt}" if system_prompt else prompt
+            # Lista de modelos por ordem de prioridade (incluindo o exigido pela API)
+            modelos = ['gemini-3.8-flash', 'gemini-3.0-flash', 'gemini-2.0-flash']
+            ultimo_erro = ""
+            
+            for modelo in modelos:
+                try:
+                    response = self.gemini_client.models.generate_content(
+                        model=modelo,
+                        contents=full_prompt
+                    )
+                    return response.text
+                except Exception as e:
+                    ultimo_erro = str(e)
+                    continue
+                    
+            return f"[Erro na API do Gemini]: {ultimo_erro}"
         
         elif self.ai_mode == "ollama":
             try:
