@@ -22,34 +22,37 @@ class StarLightCore:
         self.load_memory()
 
     def _get_api_key(self):
-        """Procura a chave MISTRAL_API_KEY nos Secrets do Streamlit ou no .env."""
+        """Busca a GEMINI_API_KEY nos Secrets do Streamlit ou no .env local."""
         try:
             import streamlit as st
             if hasattr(st, "secrets"):
-                for k in ["MISTRAL_API_KEY", "mistral_api_key"]:
+                for k in ["GEMINI_API_KEY", "gemini_api_key", "GOOGLE_API_KEY"]:
                     if k in st.secrets:
                         return str(st.secrets[k]).strip()
                 for sec_val in st.secrets.values():
                     if isinstance(sec_val, dict):
                         for k, v in sec_val.items():
-                            if "mistral" in k.lower() or "key" in k.lower():
+                            if "gemini" in k.lower() or "api_key" in k.lower():
                                 return str(v).strip()
-        except Exception as e:
-            self.last_error = f"Erro ao ler st.secrets: {e}"
+        except Exception:
+            pass
 
-        api_key = os.getenv("MISTRAL_API_KEY")
-        return api_key.strip() if api_key else None
+        for k in ["GEMINI_API_KEY", "GOOGLE_API_KEY"]:
+            val = os.getenv(k)
+            if val:
+                return val.strip()
+        return None
 
     def _init_ai(self):
-        """Inicializa a ligação direta à Mistral (Nuvem) ou Ollama (Local)."""
+        """Inicializa o Gemini 3.8 na nuvem ou o Ollama localmente."""
         self.api_key = self._get_api_key()
         is_cloud = "mount/src" in os.getcwd() or os.getenv("STREAMLIT_SHARING_MODE") is not None
 
         if self.api_key or is_cloud:
             if not self.api_key:
-                self.last_error = "Chave MISTRAL_API_KEY não encontrada nos Secrets do Streamlit."
+                self.last_error = "Chave GEMINI_API_KEY não encontrada nos Secrets do Streamlit Cloud."
                 return
-            self.ai_mode = "mistral_api"
+            self.ai_mode = "gemini_api"
             self.last_error = ""
             return
 
@@ -60,7 +63,7 @@ class StarLightCore:
                 self.ai_mode = "ollama"
                 self.last_error = ""
             except ImportError:
-                self.last_error = "Nem chave da Mistral nem Ollama local disponíveis."
+                self.last_error = "Chave Gemini não configurada e Ollama local não encontrado."
 
     def load_memory(self):
         if Path(self.memory_file).exists():
@@ -77,42 +80,40 @@ class StarLightCore:
             with open(self.memory_file, "w", encoding="utf-8") as f:
                 json.dump(self.memory, f, ensure_ascii=False, indent=2)
         except Exception as e:
-            print(f"Erro ao guardar memória: {e}")
+            print(f"Erro ao salvar memória: {e}")
 
     def generate_response(self, prompt, system_prompt=""):
         if self.ai_mode == "fallback":
             self._init_ai()
 
-        if self.ai_mode == "mistral_api":
+        if self.ai_mode == "gemini_api":
             try:
-                messages = []
-                if system_prompt:
-                    messages.append({"role": "system", "content": system_prompt})
-                messages.append({"role": "user", "content": prompt})
-
-                # Chamada direta à API da Mistral sem depender de pacotes externos
-                url = "https://api.mistral.ai/v1/chat/completions"
-                headers = {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json",
-                    "Authorization": f"Bearer {self.api_key}"
+                url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={self.api_key}"
+                headers = {"Content-Type": "application/json"}
+                
+                payload = {
+                    "contents": [{" role": "user", "parts": [{"text": prompt}]}]
                 }
-                data = json.dumps({
-                    "model": "mistral-small-latest",
-                    "messages": messages
-                }).encode("utf-8")
+                # Se houver prompt de sistema da StarLight, envia separado de forma estruturada
+                if system_prompt:
+                    payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
+                
+                # Corrige chave "role" mantendo formato simples compatível com toda a API v1beta
+                payload["contents"] = [{"parts": [{"text": prompt}]}]
 
+                data = json.dumps(payload).encode("utf-8")
                 req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+                
                 with urllib.request.urlopen(req, timeout=30) as response:
                     res_body = json.loads(response.read().decode("utf-8"))
-                    return res_body["choices"][0]["message"]["content"]
+                    return res_body["candidates"][0]["content"]["parts"][0]["text"]
 
             except urllib.error.HTTPError as e:
                 err_msg = e.read().decode("utf-8")
-                return f"[Erro API Mistral ({e.code})]: Verifica a tua chave nos Secrets. Detalhe: {err_msg}"
+                return f"[Erro API Gemini ({e.code})]: {err_msg}"
             except Exception as e:
-                return f"[Erro na Ligação à Mistral]: {str(e)}"
-        
+                return f"[Erro de Conexão Gemini]: {str(e)}"
+
         elif self.ai_mode == "ollama":
             try:
                 messages = []
@@ -120,10 +121,7 @@ class StarLightCore:
                     messages.append({"role": "system", "content": system_prompt})
                 messages.append({"role": "user", "content": prompt})
 
-                response = self.ollama.chat(
-                    model="mistral",
-                    messages=messages
-                )
+                response = self.ollama.chat(model="mistral", messages=messages)
                 return response["message"]["content"]
             except Exception as e:
                 return f"[Erro Ollama Local]: {str(e)}"
