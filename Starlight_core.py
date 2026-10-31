@@ -95,8 +95,8 @@ class StarLightCore:
         else:
             return "Modo de IA não configurado corretamente ou dependências em falta."
 
-   def processar_mensagem(self, prompt, system_prompt=""):
-        """Método de compatibilidade com tratamento de erros visíveis na interface."""
+    def processar_mensagem(self, prompt, system_prompt=""):
+        """Método de compatibilidade robusto exigido pela interface starlight_app.py"""
         try:
             return self.generate_response(prompt, system_prompt)
         except Exception as e:
