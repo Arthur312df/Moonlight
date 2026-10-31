@@ -1,5 +1,5 @@
 import streamlit as st
-from starlight_core import StarLightCore
+from Starlight_core import StarLightCore
 
 # Configuração da página
 st.set_page_config(
