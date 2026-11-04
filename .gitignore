@@ -1,31 +1,6 @@
-# Ambiente virtual
 venv/
-env/
-ENV/
-.env
-
-# Arquivos de cache do Python
 __pycache__/
-*.py[cod]
-*$py.class
-
-# Configurações do VS Code / IDEs
+*.pyc
+.env
 .vscode/
-.idea/
-
-# Arquivos temporários ou de build
-build/
-dist/
-*.spec
-
-# Sistema operacional (Windows cria esses arquivos ocultos às vezes)
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Logs e arquivos de dados locais que podem ser criados ao rodar o app
-*.log
-starlight_memory.json
-starlight_brain.json
-starlight_dataset.jsonl
+logs/
