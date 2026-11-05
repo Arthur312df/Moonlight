@@ -9,3 +9,10 @@ whatsapp_session/
 # Logs e Arquivos Temporários
 *.log
 .DS_Store
+
+# Audio
+Audio/kokoro-v1.0.fp16.onnx
+
+token.json
+scheduler_subsystem/token.json
+scheduler_subsystem/Credentials.json
