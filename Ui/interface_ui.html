@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <title>Moonlight AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@200;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            background-color: #010206;
+            overflow: hidden;
+            height: 100vh;
+            font-family: 'Montserrat', sans-serif;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .hud-container {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 42px 50px;
+            z-index: 10;
+        }
+
+        .hud-header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-title {
+            font-size: 27px;
+            letter-spacing: 16px;
+            text-transform: uppercase;
+            margin-right: -16px;
+            color: #ffffff;
+            font-weight: 700;
+            text-shadow: 0 0 25px rgba(255, 255, 255, 0.45);
+        }
+
+        .brand-title .light-thin {
+            font-weight: 200;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 3.5px;
+            text-transform: uppercase;
+            color: rgba(255, 205, 195, 0.85);
+            background: rgba(25, 8, 12, 0.65);
+            border: 1px solid rgba(25, 75, 50, 0.28);
+            padding: 6px 16px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background-color: #ff1a33;
+            box-shadow: 0 0 10px #ff1a33;
+        }
+
+        .hud-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            width: 100%;
+        }
+
+        .telemetry {
+            font-size: 9px;
+            letter-spacing: 2.5px;
+            color: rgba(255, 175, 170, 0.35);
+            line-height: 1.9;
+            text-transform: uppercase;
+        }
+
+        .mode-controls {
+            pointer-events: auto;
+            display: flex;
+            gap: 10px;
+        }
+
+        .mode-btn {
+            background: rgba(25, 8, 12, 0.5);
+            border: 1px solid rgba(25, 75, 50, 0.22);
+            color: rgba(255, 200, 190, 0.65);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 9px;
+            font-weight: 500;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            backdrop-filter: blur(6px);
+            transition: all 0.25s ease;
+        }
+
+        .mode-btn:hover, .mode-btn.active {
+            background: rgba(255, 60, 40, 0.2);
+            border-color: rgba(255, 100, 70, 0.85);
+            color: #ffffff;
+            box-shadow: 0 0 18px rgba(255, 60, 40, 0.35);
+        }
+
+        .svg-container {
+            position: relative;
+            width: 600px;
+            height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        svg {
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        :root {
+            --outer-color-1: #0055ff;
+            --outer-color-2: #ff1a33;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="hud-container">
+        <div class="hud-header">
+            <div class="brand-title">MOON<span class="light-thin">LIGHT</span></div>
+            <div class="status-badge">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Moonlight Serene (Ambient Flow)</span>
+            </div>
+        </div>
+
+        <div class="hud-footer">
+            <div class="telemetry">
+                AI.ENGINE // VERSION 1.0<br>
+                DESENVOLVIDO POR ARTHUR.
+            </div>
+            <div class="mode-controls">
+                <button class="mode-btn active" onclick="setMode('idle', this)">Serene</button>
+                <button class="mode-btn" onclick="setMode('listening', this)">Listening</button>
+                <button class="mode-btn" onclick="setMode('speaking', this)">Speaking</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="svg-container">
+        <svg viewBox="-300 -300 600 600">
+            <defs>
+                <linearGradient id="outerGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="var(--outer-color-1)" />
+                    <stop offset="100%" stop-color="var(--outer-color-2)" />
+                </linearGradient>
+
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                </filter>
+            </defs>
+
+            <g id="ringsGroup"></g>
+        </svg>
+    </div>
+
+    <script>
+        const group = document.getElementById('ringsGroup');
+        const gradient = document.getElementById('outerGradient');
+        
+        let targetSpeedMultiplier = 0.3;
+        let currentSpeedMultiplier = 0.3;
+        let targetAmplitudeMultiplier = 1.0;
+        let currentAmplitudeMultiplier = 1.0;
+
+        const totalRings = 25;
+        let ringData = [];
+
+        for (let i = 0; i < totalRings; i++) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            
+            const baseR = 155 + (i * 2.6);
+            const strokeWidth = i === 12 ? 1.6 : 0.7;
+            const opacity = Math.max(0.2, 1.0 - (i * 0.03));
+
+            path.setAttribute('fill', 'none');
+            path.setAttribute('stroke', 'url(#outerGradient)');
+            path.setAttribute('stroke-width', strokeWidth);
+            path.setAttribute('filter', 'url(#glow)');
+            path.setAttribute('opacity', opacity);
+
+            group.appendChild(path);
+
+            ringData.push({
+                element: path,
+                baseR: baseR,
+                freq: 6 + (i % 7) * 2,
+                amp: 4.5 + (i % 5) * 2.8,
+                speed: (i % 2 === 0 ? 1 : -1) * (0.035 + (i * 0.002))
+            });
+        }
+
+        function setMode(state, btn) {
+            if (btn) {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            } else {
+                document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                if (state === 'idle') document.querySelector('.mode-btn:nth-child(1)').classList.add('active');
+                if (state === 'listening') document.querySelector('.mode-btn:nth-child(2)').classList.add('active');
+                if (state === 'speaking') document.querySelector('.mode-btn:nth-child(3)').classList.add('active');
+            }
+            
+            const statusText = document.getElementById('statusText');
+
+            if (state === 'idle') {
+                statusText.innerText = 'Moonlight Serene (Ambient Flow)';
+                targetSpeedMultiplier = 0.3;
+                targetAmplitudeMultiplier = 1.0;
+            } else if (state === 'listening') {
+                statusText.innerText = 'Moonlight Listening (Ambient Flow)';
+                targetSpeedMultiplier = 0.3;
+                targetAmplitudeMultiplier = 1.0;
+            } else if (state === 'speaking') {
+                statusText.innerText = 'Moonlight Speaking (Dynamic Active Waves)';
+                targetSpeedMultiplier = 4.2;
+                targetAmplitudeMultiplier = 1.55;
+            }
+        }
+
+        let time = 0;
+        function renderMatrix() {
+            currentSpeedMultiplier += (targetSpeedMultiplier - currentSpeedMultiplier) * 0.06;
+            currentAmplitudeMultiplier += (targetAmplitudeMultiplier - currentAmplitudeMultiplier) * 0.06;
+
+            time += 0.022 * currentSpeedMultiplier;
+
+            const gradAngle = time * 0.55;
+            const x1 = 50 + Math.cos(gradAngle) * 50;
+            const y1 = 50 + Math.sin(gradAngle) * 50;
+            const x2 = 50 - Math.cos(gradAngle) * 50;
+            const y2 = 50 - Math.sin(gradAngle) * 50;
+
+            gradient.setAttribute('x1', x1 + '%');
+            gradient.setAttribute('y1', y1 + '%');
+            gradient.setAttribute('x2', x2 + '%');
+            gradient.setAttribute('y2', y2 + '%');
+
+            ringData.forEach((ring) => {
+                let points = [];
+                const steps = 180;
+
+                for (let i = 0; i <= steps; i++) {
+                    const theta = (i / steps) * Math.PI * 2;
+                    
+                    const wave = (
+                        Math.sin(theta * ring.freq + (time * ring.speed * 20)) * 0.7 +
+                        Math.cos(theta * (ring.freq * 0.5) - (time * ring.speed * 10)) * 0.3
+                    ) * (ring.amp * currentAmplitudeMultiplier);
+                    
+                    const r = ring.baseR + wave;
+
+                    const x = r * Math.cos(theta);
+                    const y = r * Math.sin(theta);
+
+                    points.push((i === 0 ? 'M ' : 'L ') + x.toFixed(2) + ' ' + y.toFixed(2));
+                }
+
+                ring.element.setAttribute('d', points.join(' ') + ' Z');
+            });
+
+            requestAnimationFrame(renderMatrix);
+        }
+
+        requestAnimationFrame(renderMatrix);
+    </script>
+</body>
+</html>
