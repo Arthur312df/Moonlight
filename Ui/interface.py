@@ -5,20 +5,26 @@ import time
 import threading
 
 def _executar_webview(queue_comandos, event_fechar):
-    # Obtém o diretório atual do ficheiro interface.py
     diretorio_ui = os.path.dirname(os.path.abspath(__file__))
     caminho_html = os.path.join(diretorio_ui, 'interface_ui.html')
 
     window = webview.create_window(
         'Moonlight AI', 
-        caminho_html,  # <--- Usa o caminho absoluto correto
+        caminho_html, 
         width=850, 
         height=850, 
         background_color='#010206',
         frameless=True,
         transparent=True
     )
-    # Restante do código...
+
+    # Intercepta o clique no "X" para apenas esconder a janela em vez de fechar
+    def ao_tentar_fechar(e):
+        # Cancela o fechamento padrão do webview
+        e.cancel = True
+        window.hide()
+
+    window.events.closing += ao_tentar_fechar
 
     def worker_comandos():
         time.sleep(1.5)
@@ -32,13 +38,16 @@ def _executar_webview(queue_comandos, event_fechar):
                         window.evaluate_js("setMode('idle')")
                     elif cmd == 'listening':
                         window.evaluate_js("setMode('listening')")
+                    elif cmd == 'show':
+                        window.show()
+                    elif cmd == 'hide':
+                        window.hide()
             except Exception:
                 pass
             time.sleep(0.05)
 
     threading.Thread(target=worker_comandos, daemon=True).start()
     
-    # Quando a janela fecha, sinalizamos o evento de fecho
     webview.start()
     event_fechar.set()
 
@@ -56,6 +65,12 @@ class VisualizadorMoonlight:
         )
         self.processo_ui.start()
 
+    def mostrar(self):
+        self.queue_comandos.put('show')
+
+    def esconder(self):
+        self.queue_comandos.put('hide')
+
     def set_serene(self):
         self.queue_comandos.put('idle')
 
@@ -71,6 +86,7 @@ class VisualizadorMoonlight:
         return False
 
     def fechar(self):
+        # Encerramento total (usado apenas pelo Tray ao clicar em "Sair")
         self.event_fechar.set()
         if self.processo_ui and self.processo_ui.is_alive():
             self.processo_ui.terminate()

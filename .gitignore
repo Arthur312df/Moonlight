@@ -1,6 +1,11 @@
+# Ambiente Virtual e Dependências
 venv/
 __pycache__/
 *.pyc
-.env
-.vscode/
-logs/
+
+# Sessão e Dados Locais do WhatsApp (Essencial para não expor seus dados privados!)
+whatsapp_session/
+
+# Logs e Arquivos Temporários
+*.log
+.DS_Store
